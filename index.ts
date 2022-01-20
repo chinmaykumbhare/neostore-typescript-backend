@@ -43,14 +43,15 @@ const transporter = createTransport({
 
 /**
  * USERS: Add, List -> dev, verify -> dev + prod
+ * UTILS: OTP, Reset, Social, UpdateProfilePic
  */
 
-server.post("/user", async (request, response) => {
+server.post("/user", async (request: Request, response: Response) => {
     const data = await UserSchema.find({ username: request.body.username });
     response.send(data);
 })
 
-server.post("/otp", async (request, response) => {
+server.post("/otp", async (request: Request, response: Response) => {
     const otp = Math.floor(Math.random() * 10000);
     const sender = await UserSchema.find({ username: request.body.username });
     const senderEmail = sender[0].email;
@@ -69,7 +70,7 @@ server.post("/otp", async (request, response) => {
     response.send(otp.toString());
 })
 
-server.post("/resetpassword", async (request, response) => {
+server.post("/resetpassword", async (request: Request, response: Response) => {
     hash(request.body.password, 10, async (err, hash) => {
         const status = await UserSchema.updateOne({
             username: request.body.username
@@ -78,7 +79,7 @@ server.post("/resetpassword", async (request, response) => {
     })
 })
 
-server.post("/adduser", async (request, response) => {
+server.post("/adduser", async (request: Request, response: Response) => {
     hash(request.body.password, 10, async (err, hash) => {
         const status = await UserSchema.insertMany({
             username: request.body.username,
@@ -90,7 +91,7 @@ server.post("/adduser", async (request, response) => {
     })
 })
 
-server.post("/login", async (request, response) => {
+server.post("/login", async (request: Request, response: Response) => {
     const userData = await UserSchema.find({ username: request.body.username });
     if (userData.length > 0) {
         compare(request.body.password, userData[0].password, async (err, result) => {
@@ -115,7 +116,7 @@ server.post("/login", async (request, response) => {
 
 })
 
-server.post("/socialuser", async (request, response) => {
+server.post("/socialuser", async (request: Request, response: Response) => {
     const userData = await UserSchema.find({ email: request.body.email });
     if (userData.length > 0) {
         const token = await sign({
@@ -134,13 +135,13 @@ server.post("/socialuser", async (request, response) => {
     }
 })
 
-server.post("/verify", async (request, response) => {
+server.post("/verify", async (request: Request, response: Response) => {
     const token = request.body.token;
     const decodedData = verify(token, process.env.PASSWORD_HASHED_KEY || "");
     response.send(decodedData);
 })
 
-server.post("/updatepic", upload.single("file"), async (request, response) => {
+server.post("/updatepic", upload.single("file"), async (request: Request, response: Response) => {
 
     const {
         file,
@@ -163,21 +164,32 @@ server.post("/updatepic", upload.single("file"), async (request, response) => {
 
 });
 
-server.post("/getaddress", async (request, response) => {
-    const data = await UserSchema.find({ username: request.body.username });
+/**
+ * address -> get, add
+ * get -> checkout
+ * add -> myaccount
+ */
+
+server.post("/getaddress", async (request: Request, response: Response) => {
+    const data = await UserSchema.find({username: request.body.username});
     response.send(data[0].address);
+})
+
+server.post("/addaddress", async (request: Request, response: Response) => {
+    const status = await UserSchema.updateOne({_id: request.body.id}, {address: request.body.address});
+    response.send(status);
 })
 
 /**
  * Add category, products => barebone url
  */
 
-server.post("/addcategory", async (request, response) => {
+server.post("/addcategory", async (request: Request, response: Response) => {
     CategorySchema.insertMany(request.body);
     response.send("hit");
 })
 
-server.post("/upload", upload.single("file"), async (request, response) => {
+server.post("/upload", upload.single("file"), async (request: Request, response: Response) => {
 
     const {
         file,
@@ -204,12 +216,12 @@ server.post("/upload", upload.single("file"), async (request, response) => {
  * Get Products => populate category, return
  */
 
-server.get("/products", async (request, response) => {
+server.get("/products", async (request: Request, response: Response) => {
     const products = await ProductSchema.find({}).populate({ path: "Category", model: "Category" });
     response.send(products);
 })
 
-server.post("/product", async (request, response) => {
+server.post("/product", async (request: Request, response: Response) => {
     const id = request.body.id;
     if (id !== undefined) {
         const product = await ProductSchema.find({ _id: id }).populate({ path: "Category", model: "Category" });
@@ -219,7 +231,7 @@ server.post("/product", async (request, response) => {
     }
 });
 
-server.get("/categories", async (request, response) => {
+server.get("/categories", async (request: Request, response: Response) => {
     const categories = await CategorySchema.find({});
     response.send(categories);
 })
@@ -228,7 +240,7 @@ server.get("/categories", async (request, response) => {
  * Cart -> getCartItems, add to cart, remove from cart
  */
 
-server.get("/cart", async (request, response) => {
+server.get("/cart", async (request: Request, response: Response) => {
     if (request.body.userip === undefined) {
         let cart = await CartSchema.findOne({ ip: request.body.userip });
         response.send(cart);
@@ -239,7 +251,7 @@ server.get("/cart", async (request, response) => {
     }
 })
 
-server.post("/cart", async (request, response) => {
+server.post("/cart", async (request: Request, response: Response) => {
 
     if (request.body.userip) {
         const isPresent = await CartSchema.find({ ip: request.body.userip });
@@ -276,14 +288,14 @@ server.post("/cart", async (request, response) => {
  * orders: place, history
  */
 
-server.post("/order", async (request, response) => {
+server.post("/order", async (request: Request, response: Response) => {
     const status = await UserSchema.updateOne({ _id: request.body.userid }, {
         $push: { orders: { order: request.body.order } }
     });
     response.send(status);
 });
 
-server.post("/orders", async (request, response) => {
+server.post("/orders", async (request: Request, response: Response) => {
     if (request.body.userid !== undefined) {
         const orderData = await UserSchema.find({ _id: request.body.userid });
         response.send(orderData[0].orders);
